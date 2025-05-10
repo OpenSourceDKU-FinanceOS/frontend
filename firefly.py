@@ -13,7 +13,7 @@ FIREBASE_API_KEY = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIxIiwianRpIjo
 FIREFLY_API_URL = "http://localhost:8080"
 
 def get_user_spending(user_id, start_date, end_date):
-    url = f"{FIREFLY_API_URL}/api/v1/transactions?start={start_date}&end={end_date}"
+    url = f"{FIREFLY_API_URL}/api/v1/transactions?start={start_date.isoformat()}&end={end_date.isoformat()}&limit=1000"
     headers = {
         "Authorization": f"Bearer {FIREBASE_API_KEY}",
         "Accept": "application/json"
@@ -49,7 +49,7 @@ def get_user_spending(user_id, start_date, end_date):
                     "카테고리": category
                 })
             except Exception as e:
-                st.warning("반포 항목:")
+                st.warning("항목 오류:")
                 st.error(detail)
                 st.error(f"에러 메시지: {e}")
 
@@ -68,35 +68,20 @@ if st.button("지출 조회"):
         st.download_button("CSV로 저장", data=csv, file_name="지출_내역.csv", mime="text/csv")
 
         try:
-            bar = alt.Chart(df).mark_bar().encode(x=alt.X("카테고리", sort="-y"), y="금액")
-            st.altair_chart(bar, use_container_width=True)
-        except:
-            st.warning("바 차트 생성 실패")
-
-        try:
             df["날짜"] = pd.to_datetime(df["날짜"], errors='coerce')
             df["월"] = df["날짜"].dt.to_period("M").astype(str)
             df["요일"] = df["날짜"].dt.day_name()
 
             this_month = pd.to_datetime("today").month
-            food_total = df[(df["카테고리"] == "식비") & (df["날짜"].dt.month == this_month)]["금액"].sum()
-            st.info(f"🍱 이번 달 식비 모임: {food_total:.2f} 원")
+            prev_month = this_month - 1 if this_month > 1 else 12
 
-            st.subheader("요일별 자리")
+            st.subheader("요일별 지출")
             weekday_summary = df.groupby("요일")["금액"].sum()
             st.bar_chart(weekday_summary)
 
-            prev_month = this_month - 1 if this_month > 1 else 12
-            last_total = df[(df["카테고리"] == "식비") & (df["날짜"].dt.month == prev_month)]["금액"].sum()
-            delta = food_total - last_total
-            st.success(f"전월 식비: {last_total:.2f} 원 → 이번 달: {food_total:.2f} 원")
-            st.info(f"{'증가' if delta > 0 else '감소'}: {abs(delta):.2f} 원")
-
             st.subheader("월별 소비 추이")
             month_summary = df.groupby("월")["금액"].sum().reset_index()
-            line_chart = alt.Chart(month_summary).mark_line(point=True).encode(
-                x="월", y="금액"
-            )
+            line_chart = alt.Chart(month_summary).mark_line(point=True).encode(x="월", y="금액")
             st.altair_chart(line_chart, use_container_width=True)
 
             st.subheader("카테고리별 비율")
@@ -107,6 +92,17 @@ if st.button("지출 조회"):
                 tooltip=["카테고리", "금액"]
             )
             st.altair_chart(pie, use_container_width=True)
+
+            st.subheader("카테고리별 전월 대비 비교")
+            categories = ["식비", "커피", "생활비", "친목비", "교통비"]
+            for category in categories:
+                this_total = df[(df["카테고리"] == category) & (df["날짜"].dt.month == this_month)]["금액"].sum()
+                last_total = df[(df["카테고리"] == category) & (df["날짜"].dt.month == prev_month)]["금액"].sum()
+                delta = this_total - last_total
+
+                st.subheader(f"{category} 비교")
+                st.success(f"전월 {category}: {last_total:.2f} 원 → 이번 달: {this_total:.2f} 원")
+                st.info(f"{'증가' if delta > 0 else '📉 감소'}: {abs(delta):.2f} 원")
 
         except Exception as e:
             st.error("분석 중 오류 발생")
