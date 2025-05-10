@@ -57,12 +57,17 @@ def get_user_spending(user_id, start_date, end_date):
 
 if st.button("지출 조회"):
     records, total = get_user_spending(user_id, start_date, end_date)
-
+    
     st.subheader(f"총 지출: {total:.2f} 원")
 
     if records:
         df = pd.DataFrame(records)
         st.dataframe(df)
+
+        df["월"] = pd.to_datetime(df["날짜"], errors='coerce').dt.to_period("M").astype(str)
+        monthly_total = df.groupby("월")["금액"].sum().reset_index()
+        st.subheader("월별 총 지출")
+        st.dataframe(monthly_total)
 
         csv = df.to_csv(index=False).encode("utf-8-sig")
         st.download_button("CSV로 저장", data=csv, file_name="지출_내역.csv", mime="text/csv")
