@@ -1,4 +1,3 @@
-
 import streamlit as st
 import requests
 import pandas as pd
@@ -204,12 +203,12 @@ if st.button("지출 조회"):
         df["대분류"] = df["카테고리"].map(category_mapping).fillna("기타")
 
         file_mapping = {
-            "이천시": "데이터2.xlsx",
-            "서울시": "데이터4.xlsx"
+            "이천시": "데이터1.xlsx",
+            "서울시": "데이터2.xlsx"
         }
 
         # 사용자 선택에 따른 시트 이름
-        selected_file = file_mapping.get(data_source, "데이터2.xlsx")
+        selected_file = file_mapping.get(data_source, "데이터1.xlsx")
 
         try:
             df_excel = pd.read_excel(selected_file)
@@ -302,74 +301,7 @@ if st.button("지출 조회"):
             ).properties(width=600)
 
             st.altair_chart(bar_chart, use_container_width=True)
-            
-             # 💡 절약 팁
-            st.subheader("💡 절약 팁")
 
-            # MZ 감성 절약 팁
-            savings_tips = {
-                "식비": "외식보단 집밥! 장보고 밀프렙 하면 반값 가능 👍",
-                "쇼핑": "지름신 오셨다면… 장바구니에 담고 하루 뒤 다시 보기 🛒",
-                "생활비": "편의점 대신 마트, 일회용 대신 다회용으로 💡",
-                "취미": "스트리밍도 공유가 진리! 무료 체험도 챙기자 🎶",
-                "교통비": "버스+지하철 환승 찬스! 따릉이도 효자템 🚲",
-                "의료": "과잉 진료 조심! 정기 검진으로 건강 미리 챙기자 🏥",
-                "교육": "유료 강의? 요즘은 무료 유튜브/국공립 강좌도 굿 🎓",
-                "기타": "티끌 모아 태산… 군더더기 구독 점검! 📦"
-            }
-
-            # 평균보다 많이 쓴 카테고리만 골라서 팁 제공
-            overspent_categories = monthly_comparison[monthly_comparison["차이"] > 0]
-
-            if not overspent_categories.empty:
-                for _, row in overspent_categories.iterrows():
-                    category = row["대분류"]
-                    tip = savings_tips.get(category, "이번 달 이 항목은 지출을 조금 줄여보는 건 어때요?")
-                    st.warning(f"📌 [{category}] 평균보다 {int(row['차이']):,}원 더 사용했어요! → {tip}")
-            else:
-                st.success("🎉 모든 항목에서 평균 이하 지출! 완벽한 소비 습관입니다. MZ 절약왕 인정 🙌")
-
-
-            st.subheader("🏆 상위/하위 5명 평균 지출 비교")
-            group_sum = df_excel[
-                (df_excel["Date"] >= pd.to_datetime(start_date)) &
-                (df_excel["Date"] <= pd.to_datetime(end_date))
-            ].groupby("UserID")["AvgAmount"].sum().reset_index(name="총공공지출")
-
-            top5_avg = group_sum.sort_values("총공공지출", ascending=False).head(5)["총공공지출"].mean()
-            bottom5_avg = group_sum.sort_values("총공공지출").head(5)["총공공지출"].mean()
-
-            my_total = df["금액"].sum()
-
-            st.write(f"📈 나의 총 지출: {my_total:,.0f} 원")
-            st.write(f"🔺 상위 5명 평균 지출: {top5_avg:,.0f} 원 ({my_total - top5_avg:+,.0f} 원 차이)")
-            st.write(f"🔻 하위 5명 평균 지출: {bottom5_avg:,.0f} 원 ({my_total - bottom5_avg:+,.0f} 원 차이)")
-            
-            # 전체 평균 지출과 상위 % 분석
-            overall_avg = group_sum["총공공지출"].mean()
-            percent_diff = (my_total - overall_avg) / overall_avg * 100 if overall_avg != 0 else 0
-
-
-            group_sum_sorted = group_sum.sort_values("총공공지출", ascending=False).reset_index(drop=True)
-
-            try:
-                my_public_total = group_sum[group_sum["UserID"] == int(user_id)]["총공공지출"].values[0]
-            except IndexError:
-                my_public_total = my_total
-
-            higher_count = (group_sum_sorted["총공공지출"] > my_public_total).sum()
-            my_rank = higher_count + 1
-            percentile = (my_rank / len(group_sum_sorted)) * 100
-
-            st.write(f"📊 전체 평균 지출: {overall_avg:,.0f} 원")
-            saving_percentile = 100 - percentile
-
-            if my_total < overall_avg:
-                st.write(f"📍 평균보다 소비가 **낮고**, 절약 상위 **{saving_percentile:.1f}%**에 해당합니다.")
-            elif my_total > overall_avg:
-                st.write(f"📍 평균보다 소비가 **높고**, 지출 상위 **{percentile:.1f}%**에 해당합니다.")
-            else:
-                st.write("📍 평균과 동일한 소비를 하셨습니다.")
 
         except Exception as e:
             st.error("엑셀 비교 분석 중 오류 발생")
